@@ -111,7 +111,7 @@ class Buffer:
             num_batches = self.buffer_batches
             self.first = False
 
-            for _ in tqdm.trange(0, num_batches, self.cfg["model_batch_size"] // 2):
+            for _ in tqdm.trange(0, num_batches, self.cfg["model_batch_size"]):
                 end_idx = self.token_pointer + self.cfg["model_batch_size"]
                 tokens = self.all_tokens[self.token_pointer : end_idx].to(self.cfg["device"])
 
