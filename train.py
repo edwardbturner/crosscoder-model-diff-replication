@@ -1,23 +1,22 @@
-# %%
-from utils import *
+from transformer_lens import HookedTransformer  # type: ignore
+
 from trainer import Trainer
-# %%
-device = 'cuda:0'
+from utils import arg_parse_update_cfg, load_pile_lmsys_mixed_tokens
+
+device = "cuda:0"
 
 base_model = HookedTransformer.from_pretrained(
-    "gemma-2-2b", 
-    device=device, 
+    "gemma-2-2b",
+    device=device,
 )
 
 chat_model = HookedTransformer.from_pretrained(
-    "gemma-2-2b-it", 
-    device=device, 
+    "gemma-2-2b-it",
+    device=device,
 )
 
-# %%
 all_tokens = load_pile_lmsys_mixed_tokens()
 
-# %%
 default_cfg = {
     "seed": 49,
     "batch_size": 4096,
@@ -45,5 +44,3 @@ default_cfg = {
 cfg = arg_parse_update_cfg(default_cfg)
 
 trainer = Trainer(cfg, base_model, chat_model, all_tokens)
-trainer.train()
-# %%

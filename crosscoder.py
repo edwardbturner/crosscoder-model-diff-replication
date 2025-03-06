@@ -1,25 +1,26 @@
-
-from utils import *
-
-from torch import nn
+import json
 import pprint
-import torch.nn.functional as F
-from typing import Optional, Union
-from huggingface_hub import hf_hub_download
+from pathlib import Path
+from typing import NamedTuple, Optional, Union
 
-from typing import NamedTuple
+import einops
+import torch
+import torch.nn.functional as F
+from huggingface_hub import hf_hub_download
+from torch import nn
 
 DTYPES = {"fp32": torch.float32, "fp16": torch.float16, "bf16": torch.bfloat16}
 SAVE_DIR = Path("/workspace/crosscoder-model-diff-replication/checkpoints")
 
+
 class LossOutput(NamedTuple):
-    # loss: torch.Tensor
     l2_loss: torch.Tensor
     l1_loss: torch.Tensor
     l0_loss: torch.Tensor
     explained_variance: torch.Tensor
     explained_variance_A: torch.Tensor
     explained_variance_B: torch.Tensor
+
 
 class CrossCoder(nn.Module):
     def __init__(self, cfg):
@@ -33,13 +34,7 @@ class CrossCoder(nn.Module):
         self.W_enc = nn.Parameter(
             torch.empty(2, d_in, d_hidden, dtype=self.dtype)
         )
-        self.W_dec = nn.Parameter(
-            torch.nn.init.normal_(
-                torch.empty(
-                    d_hidden, 2, d_in, dtype=self.dtype
-                )
-            )
-        )
+
         self.W_dec = nn.Parameter(
             torch.nn.init.normal_(
                 torch.empty(
@@ -120,9 +115,16 @@ class CrossCoder(nn.Module):
         total_decoder_norm = einops.reduce(decoder_norms, 'd_hidden n_models -> d_hidden', 'sum')
         l1_loss = (acts * total_decoder_norm[None, :]).sum(-1).mean(0)
 
-        l0_loss = (acts>0).float().sum(-1).mean()
+        l0_loss = (acts > 0).float().sum(-1).mean()
 
-        return LossOutput(l2_loss=l2_loss, l1_loss=l1_loss, l0_loss=l0_loss, explained_variance=explained_variance, explained_variance_A=explained_variance_A, explained_variance_B=explained_variance_B)
+        return LossOutput(
+            l2_loss=l2_loss,
+            l1_loss=l1_loss,
+            l0_loss=l0_loss,
+            explained_variance=explained_variance,
+            explained_variance_A=explained_variance_A,
+            explained_variance_B=explained_variance_B,
+        )
 
     def create_save_dir(self):
         base_dir = Path("/workspace/crosscoder-model-diff-replication/checkpoints")
@@ -160,13 +162,13 @@ class CrossCoder(nn.Module):
     ) -> "CrossCoder":
         """
         Load CrossCoder weights and config from HuggingFace.
-        
+
         Args:
             repo_id: HuggingFace repository ID
             path: Path within the repo to the weights/config
             model: The transformer model instance needed for initialization
             device: Device to load the model to (defaults to cfg device if not specified)
-            
+
         Returns:
             Initialized CrossCoder instance
         """

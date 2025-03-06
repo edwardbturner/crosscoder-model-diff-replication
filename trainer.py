@@ -1,9 +1,12 @@
-from utils import *
-from crosscoder import CrossCoder
-from buffer import Buffer
+import torch
 import tqdm
-
+import wandb
 from torch.nn.utils import clip_grad_norm_
+
+from buffer import Buffer
+from crosscoder import CrossCoder
+
+
 class Trainer:
     def __init__(self, cfg, model_A, model_B, all_tokens):
         self.cfg = cfg
@@ -32,7 +35,7 @@ class Trainer:
             return 1.0 - (step - 0.8 * self.total_steps) / (0.2 * self.total_steps)
 
     def get_l1_coeff(self):
-        # Linearly increases from 0 to cfg["l1_coeff"] over the first 0.05 * self.total_steps steps, then keeps it constant
+        # linearly increases from 0 to cfg["l1_coeff"] over the first 0.05 * self.total_steps steps, then constant
         if self.step_counter < 0.05 * self.total_steps:
             return self.cfg["l1_coeff"] * self.step_counter / (0.05 * self.total_steps)
         else:
