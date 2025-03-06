@@ -36,7 +36,7 @@ def get_default_cfg(base_model: HookedTransformer, device: str, wandb_project: s
     return arg_parse_update_cfg(default_cfg)
 
 
-def get_default_trainer(device: str, wandb_project: str, wandb_entity: str) -> Trainer:
+def get_default_trainer(wandb_project: str, wandb_entity: str, device: str = "cuda:0") -> Trainer:
     base_model = get_model("gemma-2-2b", device)
     chat_model = get_model("gemma-2-2b-it", device)
     cfg = get_default_cfg(base_model, device, wandb_project, wandb_entity)
