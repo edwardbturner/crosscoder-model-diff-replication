@@ -1,6 +1,5 @@
 import json
 import pprint
-from pathlib import Path
 from typing import NamedTuple, Optional, Union
 
 import einops
@@ -9,8 +8,7 @@ import torch.nn.functional as F
 from huggingface_hub import hf_hub_download
 from torch import nn
 
-DTYPES = {"fp32": torch.float32, "fp16": torch.float16, "bf16": torch.bfloat16}
-SAVE_DIR = Path("/workspace/crosscoder-model-diff-replication/checkpoints")
+from utils import DTYPES, SAVE_DIR
 
 
 class LossOutput(NamedTuple):
@@ -127,12 +125,8 @@ class CrossCoder(nn.Module):
         )
 
     def create_save_dir(self):
-        base_dir = Path("/workspace/crosscoder-model-diff-replication/checkpoints")
-        version_list = [
-            int(file.name.split("_")[1])
-            for file in list(SAVE_DIR.iterdir())
-            if "version" in str(file)
-        ]
+        base_dir = SAVE_DIR
+        version_list = [int(file.name.split("_")[1]) for file in list(base_dir.iterdir()) if "version" in str(file)]
         if len(version_list):
             version = 1 + max(version_list)
         else:
@@ -202,7 +196,7 @@ class CrossCoder(nn.Module):
 
     @classmethod
     def load(cls, version_dir, checkpoint_version):
-        save_dir = Path("/workspace/crosscoder-model-diff-replication/checkpoints") / str(version_dir)
+        save_dir = SAVE_DIR / str(version_dir)
         cfg_path = save_dir / f"{str(checkpoint_version)}_cfg.json"
         weight_path = save_dir / f"{str(checkpoint_version)}.pt"
 

@@ -2,6 +2,7 @@ import argparse
 import colorsys
 import json
 from html import escape
+from pathlib import Path
 
 import numpy as np
 import plotly.express as px  # type: ignore
@@ -12,6 +13,10 @@ from datasets import load_dataset  # type: ignore
 from IPython import get_ipython  # type: ignore
 from IPython.display import HTML
 from transformer_lens.utils import to_numpy  # type: ignore
+
+DTYPES = {"fp32": torch.float32, "fp16": torch.float16, "bf16": torch.bfloat16}
+SAVE_DIR = Path("/workspace/crosscoder-model-diff-replication/checkpoints")
+
 
 ipython = get_ipython()
 # Code to automatically update the HookedTransformer code as its edited without restarting the kernel
