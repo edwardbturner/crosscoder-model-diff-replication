@@ -2,14 +2,14 @@ import torch
 from transformer_lens import HookedTransformer  # type: ignore
 
 from trainer import Trainer
-from utils import arg_parse_update_cfg, load_pile_lmsys_mixed_tokens
+from utils import arg_parse_update_cfg, load_gemma_pile_lmsys_mixed_tokens
 
 
 def get_model(name: str, device: str, dtype: torch.dtype = torch.bfloat16) -> HookedTransformer:
     return HookedTransformer.from_pretrained(name, device=device, dtype=dtype)
 
 
-def get_default_cfg(base_model: HookedTransformer, wandb_project: str, wandb_entity: str, device: str) -> dict:
+def get_kissane_default_cfg(base_model: HookedTransformer, wandb_project: str, wandb_entity: str, device: str) -> dict:
     default_cfg = {
         "seed": 49,
         "batch_size": 4096,
@@ -37,9 +37,9 @@ def get_default_cfg(base_model: HookedTransformer, wandb_project: str, wandb_ent
     return arg_parse_update_cfg(default_cfg)
 
 
-def get_default_trainer(wandb_project: str, wandb_entity: str, device: str) -> Trainer:
+def get_kissane_default_trainer(wandb_project: str, wandb_entity: str, device: str) -> Trainer:
     base_model = get_model("gemma-2-2b", device, torch.bfloat16)
     chat_model = get_model("gemma-2-2b-it", device, torch.bfloat16)
-    cfg = get_default_cfg(base_model, device, wandb_project, wandb_entity)
-    all_tokens = load_pile_lmsys_mixed_tokens()
+    cfg = get_kissane_default_cfg(base_model, device, wandb_project, wandb_entity)
+    all_tokens = load_gemma_pile_lmsys_mixed_tokens()
     return Trainer(cfg, base_model, chat_model, all_tokens)

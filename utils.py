@@ -191,7 +191,7 @@ def arg_parse_update_cfg(default_cfg):
     return cfg
 
 
-def load_pile_lmsys_mixed_tokens():
+def load_gemma_pile_lmsys_mixed_tokens():
     try:
         print("Loading data from disk")
         all_tokens = torch.load("/workspace/data/pile-lmsys-mix-1m-tokenized-gemma-2.pt")
@@ -205,5 +205,39 @@ def load_pile_lmsys_mixed_tokens():
         data.set_format(type="torch", columns=["input_ids"])
         all_tokens = data["input_ids"]
         torch.save(all_tokens, "/workspace/data/pile-lmsys-mix-1m-tokenized-gemma-2.pt")
+        print("Saved tokens to disk")
+    return all_tokens
+
+
+def load_qwen_pile_chat_format_tokens():
+    try:
+        print("Loading data from disk")
+        all_tokens = torch.load("/workspace/data/pile-chat-format-with-assistant-qwen1.5-0.5b-chat.pt")
+    except Exception as e:
+        print(f"Error loading data from disk: {e}")
+        print("Data is not cached. Loading data from HF")
+        data = load_dataset(
+            "ckkissane/pile-chat-format-with-assistant-qwen1.5-0.5b-chat", split="train", cache_dir="/workspace/cache/"
+        )
+        data.save_to_disk("/workspace/data/pile-chat-format-with-assistant-qwen1.5-0.5b-chat.hf")
+        data.set_format(type="torch", columns=["input_ids"])
+        all_tokens = data["input_ids"]
+        torch.save(all_tokens, "/workspace/data/pile-chat-format-with-assistant-qwen1.5-0.5b-chat.pt")
+        print("Saved tokens to disk")
+    return all_tokens
+
+
+def load_qwen_lmsys_chat_tokens():
+    try:
+        print("Loading data from disk")
+        all_tokens = torch.load("/workspace/data/lmsys-chat-1m-qwen1.5-0.5b-chat.pt")
+    except Exception as e:
+        print(f"Error loading data from disk: {e}")
+        print("Data is not cached. Loading data from HF")
+        data = load_dataset("ckkissane/lmsys-chat-1m-qwen1.5-0.5b-chat", split="train", cache_dir="/workspace/cache/")
+        data.save_to_disk("/workspace/data/lmsys-chat-1m-qwen1.5-0.5b-chat.hf")
+        data.set_format(type="torch", columns=["input_ids"])
+        all_tokens = data["input_ids"]
+        torch.save(all_tokens, "/workspace/data/lmsys-chat-1m-qwen1.5-0.5b-chat.pt")
         print("Saved tokens to disk")
     return all_tokens
