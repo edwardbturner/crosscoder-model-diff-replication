@@ -1,8 +1,32 @@
+from typing import Optional
+
 import einops
 import numpy as np
 import torch
 import tqdm
-from transformer_lens import ActivationCache  # type: ignore
+from transformer_lens import ActivationCache, HookedTransformer  # type: ignore
+
+
+# below is hacky code but used to work around RAM issues
+@torch.no_grad()
+def single_estimate_norm_scaling_factor(cfg, all_tokens, batch_size, model, n_batches_for_norm_estimate: int = 100):
+    # stolen from SAELens:
+    # https://github.com/jbloomAus/SAELens/blob/6d6eaef343fd72add6e26d4c13307643a62c41bf/sae_lens/training/activations_store.py#L370
+    norms_per_batch = []
+    for i in tqdm.tqdm(range(n_batches_for_norm_estimate), desc="Estimating norm scaling factor"):
+        tokens = all_tokens[i * batch_size : (i + 1) * batch_size]
+        _, cache = model.run_with_cache(
+            tokens,
+            names_filter=cfg["hook_point"],
+            return_type=None,
+        )
+        acts = cache[cfg["hook_point"]]
+        # TODO: maybe drop BOS here
+        norms_per_batch.append(acts.norm(dim=-1).mean().item())
+    mean_norm = np.mean(norms_per_batch)
+    scaling_factor = np.sqrt(model.cfg.d_model) / mean_norm
+
+    return scaling_factor
 
 
 class Buffer:
@@ -11,7 +35,14 @@ class Buffer:
     It will automatically run the model to generate more when it gets halfway empty.
     """
 
-    def __init__(self, cfg, model_A, model_B, all_tokens):
+    def __init__(
+        self,
+        cfg: dict,
+        model_A: HookedTransformer,
+        model_B: HookedTransformer,
+        all_tokens: torch.Tensor,
+        scaling_factors: Optional[tuple[float, float]] = None,
+    ):
         assert model_A.cfg.d_model == model_B.cfg.d_model
         self.cfg = cfg
         self.buffer_size = cfg["batch_size"] * cfg["buffer_mult"]
@@ -32,8 +63,11 @@ class Buffer:
         self.normalize = True
         self.all_tokens = all_tokens
 
-        estimated_norm_scaling_factor_A = self.estimate_norm_scaling_factor(cfg["model_batch_size"], model_A)
-        estimated_norm_scaling_factor_B = self.estimate_norm_scaling_factor(cfg["model_batch_size"], model_B)
+        if scaling_factors is None:
+            estimated_norm_scaling_factor_A = self.estimate_norm_scaling_factor(cfg["model_batch_size"], model_A)
+            estimated_norm_scaling_factor_B = self.estimate_norm_scaling_factor(cfg["model_batch_size"], model_B)
+        else:
+            estimated_norm_scaling_factor_A, estimated_norm_scaling_factor_B = scaling_factors
 
         self.normalisation_factor = torch.tensor(
             [
