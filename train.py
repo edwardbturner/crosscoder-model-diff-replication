@@ -1,16 +1,15 @@
+import torch
 from transformer_lens import HookedTransformer  # type: ignore
 
 from trainer import Trainer
 from utils import arg_parse_update_cfg, load_pile_lmsys_mixed_tokens
 
 
-def get_model(name: str, device: str = "cuda:0") -> HookedTransformer:
-    return HookedTransformer.from_pretrained(name, device=device)
+def get_model(name: str, device: str) -> HookedTransformer:
+    return HookedTransformer.from_pretrained(name, device=device, dtype=torch.bfloat16)
 
 
-def get_default_cfg(
-    base_model: HookedTransformer, wandb_project: str, wandb_entity: str, device: str = "cuda:0"
-) -> dict:
+def get_default_cfg(base_model: HookedTransformer, wandb_project: str, wandb_entity: str, device: str) -> dict:
     default_cfg = {
         "seed": 49,
         "batch_size": 4096,
@@ -38,7 +37,7 @@ def get_default_cfg(
     return arg_parse_update_cfg(default_cfg)
 
 
-def get_default_trainer(wandb_project: str, wandb_entity: str, device: str = "cuda:0") -> Trainer:
+def get_default_trainer(wandb_project: str, wandb_entity: str, device: str) -> Trainer:
     base_model = get_model("gemma-2-2b", device)
     chat_model = get_model("gemma-2-2b-it", device)
     cfg = get_default_cfg(base_model, device, wandb_project, wandb_entity)
