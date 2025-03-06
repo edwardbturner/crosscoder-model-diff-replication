@@ -9,12 +9,12 @@ from transformer_lens import ActivationCache, HookedTransformer  # type: ignore
 
 # below is hacky code but used to work around RAM issues
 @torch.no_grad()
-def single_estimate_norm_scaling_factor(cfg, all_tokens, batch_size, model, n_batches_for_norm_estimate: int = 100):
+def single_estimate_norm_scaling_factor(cfg, all_tokens, model, n_batches_for_norm_estimate: int = 100):
     # stolen from SAELens:
     # https://github.com/jbloomAus/SAELens/blob/6d6eaef343fd72add6e26d4c13307643a62c41bf/sae_lens/training/activations_store.py#L370
     norms_per_batch = []
     for i in tqdm.tqdm(range(n_batches_for_norm_estimate), desc="Estimating norm scaling factor"):
-        tokens = all_tokens[i * batch_size : (i + 1) * batch_size]
+        tokens = all_tokens[i * cfg["model_batch_size"] : (i + 1) * cfg["model_batch_size"]]
         _, cache = model.run_with_cache(
             tokens,
             names_filter=cfg["hook_point"],
