@@ -5,8 +5,8 @@ from trainer import Trainer
 from utils import arg_parse_update_cfg, load_pile_lmsys_mixed_tokens
 
 
-def get_model(name: str, device: str) -> HookedTransformer:
-    return HookedTransformer.from_pretrained(name, device=device, dtype=torch.bfloat16)
+def get_model(name: str, device: str, dtype: torch.dtype = torch.bfloat16) -> HookedTransformer:
+    return HookedTransformer.from_pretrained(name, device=device, dtype=dtype)
 
 
 def get_default_cfg(base_model: HookedTransformer, wandb_project: str, wandb_entity: str, device: str) -> dict:
@@ -38,8 +38,8 @@ def get_default_cfg(base_model: HookedTransformer, wandb_project: str, wandb_ent
 
 
 def get_default_trainer(wandb_project: str, wandb_entity: str, device: str) -> Trainer:
-    base_model = get_model("gemma-2-2b", device)
-    chat_model = get_model("gemma-2-2b-it", device)
+    base_model = get_model("gemma-2-2b", device, torch.bfloat16)
+    chat_model = get_model("gemma-2-2b-it", device, torch.bfloat16)
     cfg = get_default_cfg(base_model, device, wandb_project, wandb_entity)
     all_tokens = load_pile_lmsys_mixed_tokens()
     return Trainer(cfg, base_model, chat_model, all_tokens)
