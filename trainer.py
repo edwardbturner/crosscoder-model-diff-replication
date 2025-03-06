@@ -1,19 +1,30 @@
+from typing import Optional
+
 import torch
 import tqdm
 import wandb
 from torch.nn.utils import clip_grad_norm_
+from transformer_lens import HookedTransformer  # type: ignore
 
 from buffer import Buffer
 from crosscoder import CrossCoder
 
 
 class Trainer:
-    def __init__(self, cfg, model_A, model_B, all_tokens):
+
+    def __init__(
+        self,
+        cfg: dict,
+        model_A: HookedTransformer,
+        model_B: HookedTransformer,
+        all_tokens: torch.Tensor,
+        scaling_factors: Optional[tuple[float, float]] = None,
+    ):
         self.cfg = cfg
         self.model_A = model_A
         self.model_B = model_B
         self.crosscoder = CrossCoder(cfg)
-        self.buffer = Buffer(cfg, model_A, model_B, all_tokens)
+        self.buffer = Buffer(cfg, model_A, model_B, all_tokens, scaling_factors)
         self.total_steps = cfg["num_tokens"] // cfg["batch_size"]
 
         self.optimizer = torch.optim.Adam(
