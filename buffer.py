@@ -4,7 +4,7 @@ import einops
 import numpy as np
 import torch
 import tqdm
-from transformer_lens import ActivationCache, HookedTransformer  # type: ignore
+from transformer_lens import HookedTransformer  # type: ignore
 
 
 # below is hacky code but used to work around RAM issues
@@ -74,7 +74,7 @@ class Buffer:
                 estimated_norm_scaling_factor_A,
                 estimated_norm_scaling_factor_B,
             ],
-            device="cuda:0",
+            device=self.cfg["device"],
             dtype=torch.float32,
         )
         self.refresh()
@@ -104,28 +104,22 @@ class Buffer:
     @torch.no_grad()
     def refresh(self):
         self.pointer = 0
+        self.token_pointer = 0
         print("Refreshing the buffer!")
-        with torch.autocast("cuda", torch.bfloat16):
-            if self.first:
-                num_batches = self.buffer_batches
-            else:
-                num_batches = self.buffer_batches // 2
-            self.first = False
-            for _ in tqdm.trange(0, num_batches, self.cfg["model_batch_size"]):
-                tokens = self.all_tokens[
-                    self.token_pointer : min(
-                        self.token_pointer + self.cfg["model_batch_size"], num_batches
-                    )
-                ]
-                _, cache_A = self.model_A.run_with_cache(
-                    tokens, names_filter=self.cfg["hook_point"]
-                )
-                cache_A: ActivationCache
 
-                _, cache_B = self.model_B.run_with_cache(
-                    tokens, names_filter=self.cfg["hook_point"]
-                )
-                cache_B: ActivationCache
+        with torch.autocast("cuda", torch.bfloat16):
+            num_batches = self.buffer_batches
+            self.first = False
+
+            for _ in tqdm.trange(0, num_batches, self.cfg["model_batch_size"] // 2):
+                end_idx = self.token_pointer + self.cfg["model_batch_size"]
+                tokens = self.all_tokens[self.token_pointer : end_idx].to(self.cfg["device"])
+
+                if tokens.size(0) == 0:
+                    break
+
+                _, cache_A = self.model_A.run_with_cache(tokens, names_filter=self.cfg["hook_point"])
+                _, cache_B = self.model_B.run_with_cache(tokens, names_filter=self.cfg["hook_point"])
 
                 acts = torch.stack([cache_A[self.cfg["hook_point"]], cache_B[self.cfg["hook_point"]]], dim=0)
                 acts = acts[:, :, 1:, :]  # drop BOS
@@ -135,26 +129,28 @@ class Buffer:
                     tokens.shape[1] - 1,
                     self.model_A.cfg.d_model,
                 )  # [2, batch, seq_len, d_model]
-                acts = einops.rearrange(
-                    acts,
-                    "n_layers batch seq_len d_model -> (batch seq_len) n_layers d_model",
-                )
+                acts = einops.rearrange(acts, "n_layers batch seq_len d_model -> (batch seq_len) n_layers d_model")
 
-                self.buffer[self.pointer : self.pointer + acts.shape[0]] = acts
+                available_space = self.buffer_size - self.pointer
+                if acts.size(0) > available_space:
+                    acts = acts[:available_space]
+
+                self.buffer[self.pointer : self.pointer + acts.size(0)] = acts
                 self.pointer += acts.shape[0]
                 self.token_pointer += self.cfg["model_batch_size"]
 
+                if self.pointer >= self.buffer_size:
+                    break
+
         self.pointer = 0
-        self.buffer = self.buffer[
-            torch.randperm(self.buffer.shape[0]).to(self.cfg["device"])
-        ]
+        self.buffer = self.buffer[torch.randperm(self.buffer.size(0)).to(self.cfg["device"])]
 
     @torch.no_grad()
     def next(self):
         out = self.buffer[self.pointer : self.pointer + self.cfg["batch_size"]].float()
         # out: [batch_size, n_layers, d_model]
         self.pointer += self.cfg["batch_size"]
-        if self.pointer > self.buffer.shape[0] // 2 - self.cfg["batch_size"]:
+        if self.pointer + self.cfg["batch_size"] > self.buffer.shape[0] // 2:
             self.refresh()
         if self.normalize:
             out = out * self.normalisation_factor[None, :, None]
