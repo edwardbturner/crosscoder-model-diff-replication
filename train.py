@@ -4,11 +4,13 @@ from trainer import Trainer
 from utils import arg_parse_update_cfg, load_pile_lmsys_mixed_tokens
 
 
-def get_model(name: str, device: str) -> HookedTransformer:
+def get_model(name: str, device: str = "cuda:0") -> HookedTransformer:
     return HookedTransformer.from_pretrained(name, device=device)
 
 
-def get_default_cfg(base_model: HookedTransformer, device: str, wandb_project: str, wandb_entity: str) -> dict:
+def get_default_cfg(
+    base_model: HookedTransformer, wandb_project: str, wandb_entity: str, device: str = "cuda:0"
+) -> dict:
     default_cfg = {
         "seed": 49,
         "batch_size": 4096,
