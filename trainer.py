@@ -81,6 +81,7 @@ class Trainer:
         print(loss_dict)
 
     def save(self):
+        print("Saving model...")
         self.crosscoder.save()
 
     def train(self):

@@ -160,8 +160,7 @@ class CrossCoder(nn.Module):
         Args:
             repo_id: HuggingFace repository ID
             path: Path within the repo to the weights/config
-            model: The transformer model instance needed for initialization
-            device: Device to load the model to (defaults to cfg device if not specified)
+            device: Device to load the weights to (defaults to cfg device if not specified)
 
         Returns:
             Initialized CrossCoder instance
